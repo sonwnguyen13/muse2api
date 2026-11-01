@@ -274,16 +274,22 @@ class BrowserDriver(MuseDriver):
             if not value:
                 continue
             exp = account.cookie_expires.get(name) or 0
-            params = {
+            params: dict[str, Any] = {
                 "name": name,
                 "value": value,
-                "domain": ".muse.ai",
                 "path": "/",
                 "secure": True,
                 # Never hand Chromium a past expiry; it would drop the cookie silently.
                 "expires": exp if exp > floor else time.time() + 7 * 86400,
             }
-            await session.send("Network.setCookie", params)
+            if name.startswith("__Host-"):
+                params["url"] = "https://muse.ai/"
+            else:
+                params["domain"] = ".muse.ai"
+            try:
+                await session.send("Network.setCookie", params)
+            except Exception as exc:
+                log.warning("skipping cookie %s: %s", name, exc)
 
     @staticmethod
     def _forget(tab: _Tab) -> None:

@@ -87,3 +87,9 @@ class UpstreamRefused(UpstreamError):
 
     code = "upstream_refused"
     retryable = False
+
+    def __init__(self, message: str = "", *, code: str | None = None) -> None:
+        super().__init__(message, code=code)
+        low = (message or "").lower()
+        if "country or region" in low or "region restriction" in low:
+            self.retryable = True

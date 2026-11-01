@@ -103,6 +103,22 @@ async def list_accounts(svc: Services = Depends(get_services)) -> dict:
 @router.post("/accounts")
 async def create_account(body: AccountCreate, svc: Services = Depends(get_services)) -> dict:
     acc = _build_account(body)
+    existing = next(
+        (
+            a for a in svc.pool.all()
+            if (acc.label and a.label == acc.label)
+            or (acc.cookies.get("hatch_sess") and a.cookies.get("hatch_sess") == acc.cookies.get("hatch_sess"))
+        ),
+        None,
+    )
+    if existing is not None:
+        existing.label = acc.label or existing.label
+        existing.cookies = acc.cookies
+        existing.cookie_expires = {**existing.cookie_expires, **acc.cookie_expires}
+        existing.enabled = acc.enabled
+        existing.status = AccountStatus.ACTIVE
+        existing.last_error = None
+        acc = existing
     await svc.pool.upsert(acc)
     return {"account": acc.public(), "missing_cookies": missing_session_cookies(acc.cookies)}
 

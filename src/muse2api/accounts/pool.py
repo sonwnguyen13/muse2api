@@ -255,7 +255,15 @@ class AccountPool:
                 acc.status = AccountStatus.ACTIVE
             return
         acc.fail_count += 1
-        acc.last_error = str(error)[:500]
+        err_str = str(error)[:500]
+        acc.last_error = err_str
+        low = err_str.lower()
+        if "country or region" in low or "region restriction" in low:
+            blocks = dict(acc.meta.get("kind_blocked_until") or {})
+            blocks["video"] = time.time() + 86400 * 30
+            acc.meta["kind_blocked_until"] = blocks
+            log.warning("account %s is region-restricted for video; blocking kind='video' for 30d", acc.id)
+            return
         if isinstance(error, UpstreamAuthError):
             acc.status = AccountStatus.INVALID
             log.warning("account %s marked invalid: %s", acc.id, error)
